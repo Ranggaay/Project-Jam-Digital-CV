@@ -4,18 +4,20 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-const List<DisplayColorOption> _displayColorOptions = [
-  DisplayColorOption('white', 'Putih', Color(0xFFFFFFFF)),
-  DisplayColorOption('red', 'Merah', Color(0xFFFF4B4B)),
-  DisplayColorOption('green', 'Hijau', Color(0xFF65E572)),
-  DisplayColorOption('blue', 'Biru', Color(0xFF5C8DFF)),
-  DisplayColorOption('yellow', 'Kuning', Color(0xFFFFD95C)),
-  DisplayColorOption('cyan', 'Cyan', Color(0xFF4FE8FF)),
-];
-
 const Color _accentGreen = Color(0xFF00D66B);
 const Color _actionBlue = Color(0xFF2F9DED);
 const Color _dangerRed = Color(0xFFDD2D32);
+
+const List<AlarmTrackOption> _alarmTrackOptions = [
+  AlarmTrackOption(30, '0030 Alarm 1.mp3'),
+  AlarmTrackOption(31, '0031 Alarm 2.mp3'),
+  AlarmTrackOption(32, '0032 Alarm 3.mp3'),
+  AlarmTrackOption(33, '0033 Alarm 4.mp3'),
+  AlarmTrackOption(34, '0034 Alarm 5.mp3'),
+  AlarmTrackOption(35, '0035 Alarm 6.mp3'),
+  AlarmTrackOption(36, '0036 Sholawat Seruling.mp3'),
+  AlarmTrackOption(37, '0037 modul_alfa.mp3'),
+];
 
 void main() {
   runApp(const Esp32ClockApp());
@@ -100,9 +102,9 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
   double _scrollOffset = 0;
 
   int _fontType = 0;
-  String _clockColorId = 'white';
-  String _runningTextColorId = 'yellow';
-  String _frameColorId = 'white';
+  Color _clockColor = const Color(0xFFFFFFFF);
+  Color _runningTextColor = const Color(0xFFFFD95C);
+  Color _frameColor = const Color(0xFFFFFFFF);
   double _brightness = 128;
   double _scrollSpeed = 50;
   bool _obscurePassword = true;
@@ -213,9 +215,9 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
         'bright': _brightness.round().toString(),
         'speed': _scrollSpeed.round().toString(),
         'fontType': _fontType.toString(),
-        'cJam': _colorHex(_selectedColor(_clockColorId)),
-        'cTeks': _colorHex(_selectedColor(_runningTextColorId)),
-        'cFrame': _colorHex(_selectedColor(_frameColorId)),
+        'cJam': _colorHex(_clockColor),
+        'cTeks': _colorHex(_runningTextColor),
+        'cFrame': _colorHex(_frameColor),
         'dur1': durationOne.toString(),
         'dur2': durationTwo.toString(),
         'dur3': durationThree.toString(),
@@ -246,7 +248,7 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
     final minute = _readIntController(slot.minuteController, min: 0, max: 59);
     final day = _readIntController(slot.dayController, min: 0, max: 31);
     final month = _readIntController(slot.monthController, min: 0, max: 12);
-    final track = _readIntController(slot.trackController, min: 1, max: 255);
+    final track = slot.track.clamp(1, 255);
     slot.hourController.text = hour.toString();
     slot.minuteController.text = minute.toString();
     slot.dayController.text = day.toString();
@@ -477,21 +479,33 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
                 const SizedBox(height: 28),
                 _buildSectionHeader(
                   '02',
-                  'Tampilan Layar',
-                  'Atur preview sebelum dikirim ke ESP32',
+                  'Multi Alarm',
+                  'Atur 5 slot alarm dan track MP3',
+                ),
+                const SizedBox(height: 12),
+                _buildAlarmSettingsCard(),
+                const SizedBox(height: 28),
+                _buildSectionHeader(
+                  '03',
+                  'Tampilan & Rotasi',
+                  'Atur tampilan, warna, dan durasi rotasi',
                 ),
                 const SizedBox(height: 12),
                 _buildDisplaySettingsCard(),
                 const SizedBox(height: 28),
                 _buildSectionHeader(
-                  '03',
+                  '04',
                   'Audio / MP3 DFPlayer',
                   'Kontrol volume dan tes bel jam',
                 ),
                 const SizedBox(height: 12),
                 _buildAudioCard(),
                 const SizedBox(height: 28),
-                _buildSectionHeader('04', 'Jaringan', 'Konfigurasi WiFi ESP32'),
+                _buildSectionHeader(
+                  '05',
+                  'WiFi Router',
+                  'Konfigurasi jaringan ESP32',
+                ),
                 const SizedBox(height: 12),
                 _buildNetworkCard(),
                 const SizedBox(height: 30),
@@ -588,9 +602,9 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
                 brightness: _brightness,
                 fontType: _fontType,
                 scrollOffset: _scrollOffset,
-                clockColor: _selectedColor(_clockColorId),
-                runningTextColor: _selectedColor(_runningTextColorId),
-                frameColor: _selectedColor(_frameColorId),
+                clockColor: _clockColor,
+                runningTextColor: _runningTextColor,
+                frameColor: _frameColor,
               ),
             ),
           ),
@@ -611,7 +625,14 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
       padding: const EdgeInsets.only(left: 4),
       child: Row(
         children: [
-          Text('●', style: TextStyle(color: color, fontSize: 12)),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
           const SizedBox(width: 8),
           Text(
             text,
@@ -654,6 +675,173 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
     );
   }
 
+  Widget _buildAlarmSettingsCard() {
+    return _buildCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final slot in _alarmSlots) ...[
+            _buildAlarmSlot(slot),
+            if (slot.index < _alarmSlots.length - 1) ...[
+              const SizedBox(height: 18),
+              const Divider(color: Color(0xFF363636), height: 1),
+              const SizedBox(height: 18),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlarmSlot(AlarmSlotControllers slot) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Alarm Slot ${slot.index + 1}',
+                style: const TextStyle(
+                  color: _accentGreen,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            Switch(
+              value: slot.enabled,
+              activeThumbColor: Colors.white,
+              activeTrackColor: _accentGreen,
+              inactiveThumbColor: const Color(0xFFBDBDBD),
+              inactiveTrackColor: const Color(0xFF3A3A3A),
+              onChanged: (value) {
+                setState(() => slot.enabled = value);
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildLabeledNumberField(
+                label: 'Jam',
+                controller: slot.hourController,
+                hintText: '5',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildLabeledNumberField(
+                label: 'Menit',
+                controller: slot.minuteController,
+                hintText: '0',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _buildLabeledNumberField(
+                label: 'Tanggal',
+                controller: slot.dayController,
+                hintText: '0',
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildLabeledNumberField(
+                label: 'Bulan',
+                controller: slot.monthController,
+                hintText: '0',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _buildAlarmTrackDropdown(slot),
+        const SizedBox(height: 14),
+        _buildLabel('Pesan Alarm'),
+        const SizedBox(height: 8),
+        TextField(
+          controller: slot.messageController,
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          decoration: const InputDecoration(
+            hintText: 'Pesan running text alarm',
+            prefixIcon: Icon(
+              Icons.notifications_active_rounded,
+              color: Color(0xFF777777),
+              size: 20,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildSolidButton(
+          text: 'SIMPAN ALARM ${slot.index + 1}',
+          icon: Icons.alarm_on_rounded,
+          color: _accentGreen,
+          onPressed: _isLoading ? null : () => _saveAlarm(slot),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Tanggal 0 = tiap hari, bulan 0 = tiap bulan.',
+          style: TextStyle(color: Color(0xFF777777), fontSize: 11),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAlarmTrackDropdown(AlarmSlotControllers slot) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Track MP3'),
+        const SizedBox(height: 8),
+        Container(
+          height: 50,
+          decoration: BoxDecoration(
+            color: const Color(0xFF141414),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF3A3A3A)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: slot.track,
+              isExpanded: true,
+              dropdownColor: const Color(0xFF242424),
+              borderRadius: BorderRadius.circular(4),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Colors.white,
+              ),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              items: _alarmTrackOptions.map((track) {
+                return DropdownMenuItem<int>(
+                  value: track.value,
+                  child: Text(
+                    track.label,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  slot.track = value;
+                  slot.trackController.text = value.toString();
+                });
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDisplaySettingsCard() {
     return _buildCard(
       child: Column(
@@ -663,35 +851,7 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
           const SizedBox(height: 8),
           _buildFontDropdown(),
           const SizedBox(height: 20),
-          _buildLabel('Warna Jam Digital (Atas)'),
-          const SizedBox(height: 8),
-          _buildColorDropdown(
-            value: _clockColorId,
-            onChanged: (value) {
-              setState(() => _clockColorId = value);
-              _markDisplayDirty();
-            },
-          ),
-          const SizedBox(height: 18),
-          _buildLabel('Warna Running Text (Bawah)'),
-          const SizedBox(height: 8),
-          _buildColorDropdown(
-            value: _runningTextColorId,
-            onChanged: (value) {
-              setState(() => _runningTextColorId = value);
-              _markDisplayDirty();
-            },
-          ),
-          const SizedBox(height: 18),
-          _buildLabel('Warna Frame'),
-          const SizedBox(height: 8),
-          _buildColorDropdown(
-            value: _frameColorId,
-            onChanged: (value) {
-              setState(() => _frameColorId = value);
-              _markDisplayDirty();
-            },
-          ),
+          _buildRgbColorSection(),
           const SizedBox(height: 20),
           _buildLabel('Running Text'),
           const SizedBox(height: 8),
@@ -731,6 +891,46 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
               setState(() => _scrollSpeed = value);
               _markDisplayDirty();
             },
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'Durasi Rotasi Tampilan (Detik)',
+            style: TextStyle(
+              color: _accentGreen,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildLabeledNumberField(
+                  label: 'Desain 1',
+                  controller: _durationOneController,
+                  hintText: '10',
+                  onChanged: (_) => _markDisplayDirty(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildLabeledNumberField(
+                  label: 'Desain 2',
+                  controller: _durationTwoController,
+                  hintText: '5',
+                  onChanged: (_) => _markDisplayDirty(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildLabeledNumberField(
+                  label: 'Desain 3',
+                  controller: _durationThreeController,
+                  hintText: '8',
+                  onChanged: (_) => _markDisplayDirty(),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 22),
           _buildPrimaryButton(
@@ -848,7 +1048,12 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String number, String title, String subtitle) {
+  Widget _buildSectionHeader(
+    String number,
+    String title,
+    String subtitle, {
+    Color titleColor = _accentGreen,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -867,8 +1072,8 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: _accentGreen,
+                style: TextStyle(
+                  color: titleColor,
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.4,
@@ -916,11 +1121,13 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
   Widget _buildNumberField({
     required TextEditingController controller,
     required String hintText,
+    ValueChanged<String>? onChanged,
   }) {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
       style: const TextStyle(color: Colors.white, fontSize: 16),
+      onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: const Icon(
@@ -929,6 +1136,26 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
           size: 20,
         ),
       ),
+    );
+  }
+
+  Widget _buildLabeledNumberField({
+    required String label,
+    required TextEditingController controller,
+    required String hintText,
+    ValueChanged<String>? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label),
+        const SizedBox(height: 8),
+        _buildNumberField(
+          controller: controller,
+          hintText: hintText,
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 
@@ -966,57 +1193,214 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
     );
   }
 
-  Widget _buildColorDropdown({
-    required String value,
-    required ValueChanged<String> onChanged,
-  }) {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2A2A2A)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: const Color(0xFF181818),
-          borderRadius: BorderRadius.circular(8),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Color(0xFF777777),
+  Widget _buildRgbColorSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Pengaturan Warna (RGB):',
+          style: TextStyle(
+            color: _accentGreen,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
           ),
-          items: _displayColorOptions.map((option) {
-            return DropdownMenuItem<String>(
-              value: option.id,
-              child: Row(
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildColorSwatch(
+                label: 'Warna Jam',
+                color: _clockColor,
+                onTap: () => _showRgbColorDialog(
+                  title: 'Warna Jam',
+                  initialColor: _clockColor,
+                  onSelected: (color) {
+                    setState(() => _clockColor = color);
+                    _markDisplayDirty();
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildColorSwatch(
+                label: 'Warna Teks',
+                color: _runningTextColor,
+                onTap: () => _showRgbColorDialog(
+                  title: 'Warna Teks',
+                  initialColor: _runningTextColor,
+                  onSelected: (color) {
+                    setState(() => _runningTextColor = color);
+                    _markDisplayDirty();
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildColorSwatch(
+                label: 'Warna Frame',
+                color: _frameColor,
+                onTap: () => _showRgbColorDialog(
+                  title: 'Warna Frame',
+                  initialColor: _frameColor,
+                  onSelected: (color) {
+                    setState(() => _frameColor = color);
+                    _markDisplayDirty();
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildColorSwatch({
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(label),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFF3A3A3A)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showRgbColorDialog({
+    required String title,
+    required Color initialColor,
+    required ValueChanged<Color> onSelected,
+  }) async {
+    final initial = initialColor.toARGB32();
+    var red = (initial >> 16) & 0xFF;
+    var green = (initial >> 8) & 0xFF;
+    var blue = initial & 0xFF;
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final preview = Color.fromARGB(255, red, green, blue);
+
+            void update(void Function() change) {
+              setDialogState(change);
+            }
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1D1D1D),
+              surfaceTintColor: Colors.transparent,
+              title: Text(
+                title,
+                style: const TextStyle(color: Colors.white),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 16,
-                    height: 16,
+                    height: 72,
                     decoration: BoxDecoration(
-                      color: option.color,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFF555555)),
+                      color: preview,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFF444444)),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    option.label,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  const SizedBox(height: 18),
+                  _buildRgbSlider(
+                    label: 'R',
+                    value: red,
+                    activeColor: Colors.red,
+                    onChanged: (value) => update(() => red = value),
+                  ),
+                  _buildRgbSlider(
+                    label: 'G',
+                    value: green,
+                    activeColor: Colors.green,
+                    onChanged: (value) => update(() => green = value),
+                  ),
+                  _buildRgbSlider(
+                    label: 'B',
+                    value: blue,
+                    activeColor: Colors.blue,
+                    onChanged: (value) => update(() => blue = value),
                   ),
                 ],
               ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Batal'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    onSelected(preview);
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Pilih'),
+                ),
+              ],
             );
-          }).toList(),
-          onChanged: (selected) {
-            if (selected == null) return;
-            onChanged(selected);
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildRgbSlider({
+    required String label,
+    required int value,
+    required Color activeColor,
+    required ValueChanged<int> onChanged,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 20,
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
-      ),
+        Expanded(
+          child: Slider(
+            value: value.toDouble(),
+            min: 0,
+            max: 255,
+            activeColor: activeColor,
+            inactiveColor: const Color(0xFF444444),
+            onChanged: (next) => onChanged(next.round()),
+          ),
+        ),
+        SizedBox(
+          width: 36,
+          child: Text(
+            value.toString(),
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Colors.white,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1114,21 +1498,48 @@ class _ClockControlScreenState extends State<ClockControlScreen> {
 
 }
 
-class DisplayColorOption {
-  const DisplayColorOption(this.id, this.label, this.color);
+class AlarmTrackOption {
+  const AlarmTrackOption(this.value, this.label);
 
-  final String id;
+  final int value;
   final String label;
-  final Color color;
 }
 
-Color _selectedColor(String id) {
-  return _displayColorOptions
-      .firstWhere(
-        (option) => option.id == id,
-        orElse: () => _displayColorOptions.first,
-      )
-      .color;
+class AlarmSlotControllers {
+  AlarmSlotControllers({
+    required this.index,
+    required String hour,
+    required String minute,
+    required String day,
+    required String month,
+    required String track,
+    required String message,
+  })  : hourController = TextEditingController(text: hour),
+        minuteController = TextEditingController(text: minute),
+        dayController = TextEditingController(text: day),
+        monthController = TextEditingController(text: month),
+        trackController = TextEditingController(text: track),
+        messageController = TextEditingController(text: message),
+        track = int.tryParse(track) ?? 30;
+
+  final int index;
+  final TextEditingController hourController;
+  final TextEditingController minuteController;
+  final TextEditingController dayController;
+  final TextEditingController monthController;
+  final TextEditingController trackController;
+  final TextEditingController messageController;
+  int track;
+  bool enabled = false;
+
+  void dispose() {
+    hourController.dispose();
+    minuteController.dispose();
+    dayController.dispose();
+    monthController.dispose();
+    trackController.dispose();
+    messageController.dispose();
+  }
 }
 
 String _colorHex(Color color) {
